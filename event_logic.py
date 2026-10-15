@@ -1,20 +1,21 @@
 
 def detect_zone_entries(detections, zone, camera_id="Camera 1"):
     """
-    Flag potential entries into a rectangular zone.
+    Prototype zone-entry detection.
 
-    zone = (x1, y1, x2, y2)
-    Coordinates must match the original video resolution.
+    NOTE: This version treats all people as one group.
+    It is a basic demo rule, not individual person tracking.
     """
-
     zx1, zy1, zx2, zy2 = zone
     events = []
     previous_inside = False
 
-    for detection in sorted(detections, key=lambda d: d["timestamp"]):
-        if detection["object"] != "person":
-            continue
+    people = sorted(
+        (d for d in detections if d["object"] == "person"),
+        key=lambda d: d["timestamp"]
+    )
 
+    for detection in people:
         center_x = (detection["x1"] + detection["x2"]) / 2
         center_y = (detection["y1"] + detection["y2"]) / 2
 
