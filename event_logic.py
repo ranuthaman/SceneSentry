@@ -1,17 +1,33 @@
 
-def detect_zone_entries(detections, zone, camera_id="Camera 1"):
+def detect_zone_entries(
+    detections,
+    zone,
+    camera_id="Camera 1",
+    cooldown_seconds=3.0
+):
     """
-    Prototype zone-entry detection.
+    Detect candidate observations of people inside a configured zone.
 
-    NOTE: This version treats all people as one group.
-    It is a basic demo rule, not individual person tracking.
+    zone format: (x1, y1, x2, y2)
+
+    This is a simple prototype. It does not track individual people,
+    so it cannot reliably confirm that a specific person entered.
     """
+
     zx1, zy1, zx2, zy2 = zone
-    events = []
-    previous_inside = False
 
+    if zx1 >= zx2 or zy1 >= zy2:
+        raise ValueError("Invalid zone coordinates")
+
+    events = []
+    last_event_time = float("-inf")
+
+    # Process person detections in timestamp order.
     people = sorted(
-        (d for d in detections if d["object"] == "person"),
+        (
+            d for d in detections
+            if d.get("object") == "person"
+        ),
         key=lambda d: d["timestamp"]
     )
 
@@ -24,16 +40,19 @@ def detect_zone_entries(detections, zone, camera_id="Camera 1"):
             and zy1 <= center_y <= zy2
         )
 
-        if inside and not previous_inside:
+        timestamp = detection["timestamp"]
+
+        # Limit repeated alerts while someone remains in the zone.
+        if inside and timestamp - last_event_time >= cooldown_seconds:
             events.append({
-                "timestamp": detection["timestamp"],
+                "timestamp": timestamp,
                 "camera_id": camera_id,
-                "category": "restricted_zone_entry",
-                "summary": "Person detected entering the configured zone",
+                "category": "person_in_configured_zone",
+                "summary": "Person detected in the configured zone",
                 "evidence_path": "",
                 "review_status": "needs_review"
             })
 
-        previous_inside = inside
+            last_event_time = timestamp
 
     return events
